@@ -17,10 +17,23 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>10</y>
+     <y>80</y>
      <width>521</width>
      <height>241</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="m_findAll">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>40</y>
+     <width>91</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Find All FTDI</string>
    </property>
   </widget>
  </widget>
