@@ -14,6 +14,8 @@ class Dialog : public QDialog
 
 protected:
     ftdi_context* m_ftdi;
+    ftdi_device_list* m_devlist;
+    ftdi_device_list* m_curdev;
 
 public:
     Dialog(QWidget *parent = nullptr);
@@ -22,7 +24,16 @@ public:
 private slots:
     void on_m_findAll_clicked();
 
+    void on_m_listDevices_cellDoubleClicked(int row, int column);
+
+    void on_m_testSPI_clicked();
+
 private:
     Ui::Dialog *ui;
 };
+
+
+void SPI_CSEnable();
+void SPI_CSDisable();
+
 #endif // DIALOG_H
