@@ -35,3 +35,6 @@ LIBS +=  $$PWD/LibUSB/MinGW64/static/libusb-1.0.a
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    res.qrc

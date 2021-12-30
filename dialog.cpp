@@ -2,6 +2,8 @@
 #include "ui_dialog.h"
 #include "QDebug"
 #include <libusb.h>
+#include <QMessageBox>
+#include <QThread>
 
 
 #define MemSize 16 //define data quantity you want to send out
@@ -25,11 +27,7 @@ const BYTE MSB_RISING_EDGE_CLOCK_BIT_IN = '\x22';
 const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_IN = '\x24';
 const BYTE MSB_FALLING_EDGE_CLOCK_BIT_IN = '\x26';
 
-BYTE OutputBuffer[512]; //Buffer to hold MPSSE commands and data to be sent to FT2232H
-BYTE InputBuffer[512]; //Buffer to hold Data bytes to be read from FT2232H
 DWORD dwClockDivisor = 29; //Value of clock divisor, SCL Frequency = 60 / ((1 + 29) * 2) (MHz) = 1Mhz
-DWORD dwNumBytesToSend = 0; //Index of output buffer
-DWORD dwNumBytesSent = 0, dwNumBytesRead = 0, dwNumInputBuffer = 0;
 
 BYTE ByteDataRead;
 WORD MemAddress = 0x00;
@@ -53,6 +51,8 @@ Dialog::Dialog(QWidget *parent)
         qDebug("ftdi_new failed!");
         return;
     }
+
+    on_m_findAll_clicked();
 }
 
 Dialog::~Dialog()
@@ -97,7 +97,9 @@ void Dialog::on_m_findAll_clicked()
 
 void Dialog::on_m_listDevices_cellDoubleClicked(int row, int column)
 {
-    int baudrate = 9600; // ToDo Try rate bigger than 9600
+    (void) row;
+    (void) column;
+/*    int baudrate = 9600; // ToDo Try rate bigger than 9600
 
     int status;
     // Set m_curdev to selected device
@@ -117,39 +119,243 @@ void Dialog::on_m_listDevices_cellDoubleClicked(int row, int column)
     }
 
     // Test if MPSSE mode is active
-    dwNumBytesToSend = 0;
-    OutputBuffer[dwNumBytesToSend++] = '\xAA';
-    ftdi_write_data(m_ftdi, OutputBuffer, dwNumBytesToSend);
-    dwNumBytesToSend = 0;
-
+    m_dwNumBytesToSend = 0;
+    m_outputBuffer[m_dwNumBytesToSend++] = '\xAA';
+    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+    m_dwNumBytesToSend = 0;
+*/
 
 }
 
-
 void Dialog::on_m_testSPI_clicked()
 {
+    m_dwNumBytesToSend = 0;
+    SPI_TlastDisable();
     SPI_CSEnable();
+
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x11; // length low byte, 0x0011 ==> 18dec byte
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+
+    m_outputBuffer[m_dwNumBytesToSend++] =0xa2;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x80;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x0c;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x11;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x22;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x33;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x44;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x55;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x66;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x77;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x88;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x99;
+    m_outputBuffer[m_dwNumBytesToSend++] =0xaa;
+    m_outputBuffer[m_dwNumBytesToSend++] =0xbb;
+    SPI_TlastEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte, 0x0000 ==> 1 byte
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+    m_outputBuffer[m_dwNumBytesToSend++] =0xcc;
+
     SPI_CSDisable();
+    SPI_TlastDisable();
+
+    SPI_CSEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x05; // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+
+    m_outputBuffer[m_dwNumBytesToSend++] =0xa1;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x80;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+
+    SPI_TlastEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+    m_outputBuffer[m_dwNumBytesToSend++] =0x0c;
+    SPI_TlastDisable();
+    m_outputBuffer[m_dwNumBytesToSend++] = /*MPSSE_DO_WRITE |*/ MPSSE_WRITE_NEG | MPSSE_LSB | MPSSE_DO_READ;
+    m_outputBuffer[m_dwNumBytesToSend++] = 19; // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+
+    SPI_CSDisable();
+
+    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+
+    struct ftdi_transfer_control *tc_read;
+    tc_read = ftdi_read_data_submit(m_ftdi, m_inputBuffer, 20);
+    int transfer = ftdi_transfer_data_done(tc_read);
+    int stop = 0;
 
 }
 
 //this routine is used to enable SPI device
-void SPI_CSEnable() {
+void Dialog::SPI_CSEnable() {
     //one 0x80 command can keep 0.2us, do 5 times to stay in this situation for 1us
     for (int loop = 0; loop < 5; loop++) {
-        OutputBuffer[dwNumBytesToSend++] = '\x80';//GPIO command for ADBUS
-        OutputBuffer[dwNumBytesToSend++] = '\x08';//set CS high, MOSI and SCL low
-        OutputBuffer[dwNumBytesToSend++] = '\x0b';//bit3:CS, bit2:MISO, bit1:MOSI, bit0 : SCK
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x80';//GPIO command for ADBUS
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x00';//set CS high, MOSI and SCL low
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x1b';//bit3:CS, bit2:MISO, bit1:MOSI, bit0 : SCK
     }
 }
 
 
 //this routine is used to disable SPI device
-void SPI_CSDisable() {
+void Dialog::SPI_CSDisable() {
     //one 0x80 command can keep 0.2us, do 5 times to stay in this situation for 1us
     for (int loop = 0; loop < 5; loop++) {
-        OutputBuffer[dwNumBytesToSend++] = '\x80';//GPIO command for ADBUS
-        OutputBuffer[dwNumBytesToSend++] = '\x00';//set CS, MOSI and SCL low
-        OutputBuffer[dwNumBytesToSend++] = '\x0b';//bit3:CS, bit2:MISO, bit1:MOSI, bit0 : SCK
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x80';//GPIO command for ADBUS
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x08';//set CS, MOSI and SCL low
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x1b';//bit3:CS, bit2:MISO, bit1:MOSI, bit0 : SCK
     }
+}
+void Dialog::SPI_TlastEnable() {
+    //one 0x80 command can keep 0.2us, do 5 times to stay in this situation for 1us
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x80';//GPIO command for ADBUS
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x10';//set CS high, MOSI and SCL low
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x1b';//bit3:CS, bit2:MISO, bit1:MOSI, bit0 : SCK
+}
+
+
+//this routine is used to disable SPI device
+void Dialog::SPI_TlastDisable() {
+    //one 0x80 command can keep 0.2us, do 5 times to stay in this situation for 1us
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x80';//GPIO command for ADBUS
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x00';//set CS, MOSI and SCL low
+        m_outputBuffer[m_dwNumBytesToSend++] = '\x1b';//bit3:CS, bit2:MISO, bit1:MOSI, bit0 : SCK
+}
+
+void Dialog::SPI_Send(uint8_t data)
+{
+
+}
+namespace Pin {
+   // enumerate the AD bus for conveniance.
+   enum bus_t {
+      SK = 0x01, // ADBUS0, SPI data clock
+      DO = 0x02, // ADBUS1, SPI data out
+      DI = 0x04, // ADBUS2, SPI data in
+      CS = 0x08, // ADBUS3, SPI chip select
+      L0 = 0x10, // ADBUS4, general-ourpose i/o, GPIOL0
+      L1 = 0x20, // ADBUS5, general-ourpose i/o, GPIOL1
+      L2 = 0x40, // ADBUS6, general-ourpose i/o, GPIOL2
+      l3 = 0x80  // ADBUS7, general-ourpose i/o, GPIOL3
+   };
+
+}void Dialog::on_pushButton_clicked()
+{
+
+    // Set these pins high
+    const unsigned char pinInitialState = Pin::CS|Pin::L0|Pin::L1;
+    // Use these pins as outputs
+    const unsigned char pinDirection    = Pin::SK|Pin::DO|Pin::CS|Pin::L0|Pin::L1;
+
+
+    int baudrate = 2000000;
+
+    auto items = ui->m_listDevices->selectedItems();
+    if (items.count()==0)
+    {
+        QMessageBox::warning(this,"Problem","Please, select any device");
+        return;
+    }
+    int row = items.at(0)->row();
+    int status;
+    // Set m_curdev to selected device
+    m_curdev = m_devlist;
+    for (int i = 0; i < row; i++ ) {
+        m_curdev = m_curdev->next;
+    }
+
+    status = ftdi_usb_open_dev(m_ftdi, m_curdev->dev);
+    if (status <0) {
+        qDebug("Unable to open device %s", ftdi_get_error_string(m_ftdi));
+        ui->pushButton->setIcon(QIcon(":/new/icons/Pictures/LedRed.png"));
+        return;
+    }
+
+    // This code is copied from example
+    ftdi_usb_reset(m_ftdi);
+    ftdi_set_interface(m_ftdi, INTERFACE_ANY);
+    ftdi_set_bitmode(m_ftdi, 0, 0); // reset
+    ftdi_set_bitmode(m_ftdi, 0, BITMODE_MPSSE); // enable mpsse on all bits
+    ftdi_usb_purge_buffers(m_ftdi);
+    QThread::usleep(50000); // sleep 50 ms for setup to complete
+    m_dwNumBytesToSend = 0;
+    m_outputBuffer[m_dwNumBytesToSend++] = TCK_DIVISOR;     // opcode: set clk divisor
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x05;            // argument: low bit. 60 MHz / (5+1) = 1 MHz
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00;            // argument: high bit.
+    m_outputBuffer[m_dwNumBytesToSend++] = DIS_ADAPTIVE;    // opcode: disable adaptive clocking
+    m_outputBuffer[m_dwNumBytesToSend++] = DIS_3_PHASE;     // opcode: disable 3-phase clocking
+    m_outputBuffer[m_dwNumBytesToSend++] = SET_BITS_LOW;    // opcode: set low bits (ADBUS[0-7])
+    m_outputBuffer[m_dwNumBytesToSend++] = pinInitialState; // argument: inital pin states
+    m_outputBuffer[m_dwNumBytesToSend++] = pinDirection;    // argument: pin direction
+    // Write the setup to the chip.
+    if ( ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend) != m_dwNumBytesToSend ) {
+       QMessageBox::warning(this,"Problem","Write failed");
+       return;
+    }
+
+    // zero the buffer for good measure
+    memset(m_outputBuffer, 0, sizeof(m_outputBuffer));
+    m_dwNumBytesToSend = 0;
+
+    // Now we will write and read 1 byte.
+    // The DO and DI pins should be physically connected on the breadboard.
+    // Next three commands sets the GPIOL0 pin low. Pulling CS low.
+    m_outputBuffer[m_dwNumBytesToSend++] = SET_BITS_LOW;
+    m_outputBuffer[m_dwNumBytesToSend++] = pinInitialState & ~Pin::CS;
+    m_outputBuffer[m_dwNumBytesToSend++] = pinDirection;
+    // commands to write and read one byte in SPI0 (polarity = phase = 0) mode
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_DO_READ;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte, 0x0000 ==> 1 byte
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x12; // byte to send
+    // Next three commands sets the GPIOL0 pin high. Pulling CS high.
+    m_outputBuffer[m_dwNumBytesToSend++] = SET_BITS_LOW;
+    m_outputBuffer[m_dwNumBytesToSend++] = pinInitialState | Pin::CS;
+    m_outputBuffer[m_dwNumBytesToSend++] = pinDirection;
+/*    std::cout << "Writing: ";
+    for ( int i = 0; i < m_dwNumBytesToSend; ++i ) {
+      std::cout << std::hex << (unsigned int)m_outputBuffer[i] << ' ';
+    }
+    std::cout << '\n';
+    // need to purge tx when reading for some etherial reason
+    ftdi_usb_purge_tx_buffer(&ftdi);
+    if ( ftdi_write_data(&ftdi, buf, m_dwNumBytesToSend) != m_dwNumBytesToSend ) {
+       std::cout << "Write failed\n";
+    }
+    // zero the buffer for good measure
+    memset(m_outputBuffer, 0, sizeof(m_outputBuffer));
+    m_dwNumBytesToSend = 0;
+
+    // now get the data we read just read from the chip
+    unsigned char readm_outputBuffer[256] = {0};
+    if ( ftdi_read_data(&ftdi, readBuf, 1) != 1 ) std::cout << "Read failed\n";
+    else std::cout << "Answer: " << std::hex << (unsigned int)readm_outputBuffer[0] << '\n';*/
+
+    // to here
+
+/*    ftdi_set_baudrate(m_ftdi, baudrate);
+    if (ftdi_set_bitmode(m_ftdi, 0xFF, BITMODE_MPSSE) < 0) {
+        qDebug("Can't set mode: %s\n",ftdi_get_error_string(m_ftdi));
+        ui->pushButton->setIcon(QIcon(":/new/icons/Pictures/LedRed.png"));
+        return;
+    }
+
+    // Test if MPSSE mode is active
+    dwNumBytesToSend = 0;
+    OutputBuffer[m_dwNumBytesToSend++] = '\xAA';
+    ftdi_write_data(m_ftdi, OutputBuffer, dwNumBytesToSend);
+    dwNumBytesToSend = 0;*/
+    ui->pushButton->setIcon(QIcon(":/new/icons/Pictures/LedGreen.png"));
+
 }
