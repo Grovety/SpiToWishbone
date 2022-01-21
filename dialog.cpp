@@ -6,35 +6,6 @@
 #include <QThread>
 
 
-#define MemSize 16 //define data quantity you want to send out
-const BYTE SPIDATALENGTH = 11;//3 digit command + 8 digit address
-const BYTE READ = '\xC0';//110xxxxx
-const BYTE WRITE = '\xA0';//101xxxxx
-const BYTE WREN = '\x98';//10011xxx
-const BYTE ERAL = '\x90';//10010xxx
-
-//declare for BAD command
-const BYTE AA_ECHO_CMD_1 = '\xAA';
-const BYTE AB_ECHO_CMD_2 = '\xAB';
-const BYTE BAD_COMMAND_RESPONSE = '\xFA';
-//declare for MPSSE command
-const BYTE MSB_RISING_EDGE_CLOCK_BYTE_OUT = '\x10';
-const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_OUT = '\x11';
-const BYTE MSB_RISING_EDGE_CLOCK_BIT_OUT = '\x12';
-const BYTE MSB_FALLING_EDGE_CLOCK_BIT_OUT = '\x13';
-const BYTE MSB_RISING_EDGE_CLOCK_BYTE_IN = '\x20';
-const BYTE MSB_RISING_EDGE_CLOCK_BIT_IN = '\x22';
-const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_IN = '\x24';
-const BYTE MSB_FALLING_EDGE_CLOCK_BIT_IN = '\x26';
-
-DWORD dwClockDivisor = 29; //Value of clock divisor, SCL Frequency = 60 / ((1 + 29) * 2) (MHz) = 1Mhz
-
-BYTE ByteDataRead;
-WORD MemAddress = 0x00;
-WORD DataOutBuffer[MemSize];
-WORD DataInBuffer[MemSize];
-
-
 Dialog::Dialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::Dialog)
@@ -66,7 +37,6 @@ Dialog::~Dialog()
 
 void Dialog::on_m_findAll_clicked()
 {
-    ui->m_listDevices->clear();
     ui->m_listDevices->setRowCount(0);
     char manufacturer[128], description[128];
     int retval = EXIT_SUCCESS;
@@ -101,31 +71,7 @@ void Dialog::on_m_listDevices_cellDoubleClicked(int row, int column)
 {
     (void) row;
     (void) column;
-/*    int baudrate = 9600; // ToDo Try rate bigger than 9600
 
-    int status;
-    // Set m_curdev to selected device
-    m_curdev = m_devlist;
-    for (int i = 0; i < row; i++ ) {
-        m_curdev = m_curdev->next;
-    }
-
-    status = ftdi_usb_open_dev(m_ftdi, m_curdev->dev);
-    if (status <0) {
-        qDebug("Unable to open device %s", ftdi_get_error_string(m_ftdi));
-    }
-
-    ftdi_set_baudrate(m_ftdi, baudrate);
-    if (ftdi_set_bitmode(m_ftdi, 0xFF, BITMODE_MPSSE) < 0) {
-        qDebug("Can't set mode: %s\n",ftdi_get_error_string(m_ftdi));
-    }
-
-    // Test if MPSSE mode is active
-    m_dwNumBytesToSend = 0;
-    m_outputBuffer[m_dwNumBytesToSend++] = '\xAA';
-    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
-    m_dwNumBytesToSend = 0;
-*/
 
 }
 
