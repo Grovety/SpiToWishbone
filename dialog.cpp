@@ -41,6 +41,7 @@ Dialog::Dialog(QWidget *parent)
 {
     ui->setupUi(this);
 
+    m_ftdi = 0;
     ui->m_listDevices->setColumnCount(4);
     ui->m_listDevices->setHorizontalHeaderLabels(QStringList()<<"Manufacturer" << "Description" << "Descriptor" << "VID, PID");
     ui->m_listDevices->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -52,6 +53,7 @@ Dialog::Dialog(QWidget *parent)
         return;
     }
 
+    ui->m_memoryDump->setData(m_memoryData);
     on_m_findAll_clicked();
 }
 
@@ -129,71 +131,84 @@ void Dialog::on_m_listDevices_cellDoubleClicked(int row, int column)
 
 void Dialog::on_m_testSPI_clicked()
 {
-    m_dwNumBytesToSend = 0;
-    SPI_TlastDisable();
-    SPI_CSEnable();
 
-    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x11; // length low byte, 0x0011 ==> 18dec byte
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+    // Now we know that correct address is 0x80000
+    for (int shift = 0;shift <1;shift++)
+    {
+        m_dwNumBytesToSend = 0;
 
-    m_outputBuffer[m_dwNumBytesToSend++] =0xa2;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x80;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x0c;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x11;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x22;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x33;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x44;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x55;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x66;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x77;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x88;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x99;
-    m_outputBuffer[m_dwNumBytesToSend++] =0xaa;
-    m_outputBuffer[m_dwNumBytesToSend++] =0xbb;
-    SPI_TlastEnable();
-    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte, 0x0000 ==> 1 byte
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
-    m_outputBuffer[m_dwNumBytesToSend++] =0xcc;
+        uint32_t addr = (1<<shift);
+        SPI_TlastDisable();
+        SPI_CSEnable();
 
-    SPI_CSDisable();
-    SPI_TlastDisable();
+        m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB ;
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x11; // length low byte, 0x0011 ==> 18dec byte
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
 
-    SPI_CSEnable();
-    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x05; // length low byte,
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+        m_outputBuffer[m_dwNumBytesToSend++] =0xa2;
+        m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(addr/0x1000000);
+        m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x10000);
+        m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x100);
+        m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x1);
+        m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x0c;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x11;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x22;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x33;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x44;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x55;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x66;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x77;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x88;
+        m_outputBuffer[m_dwNumBytesToSend++] =0x99;
+        m_outputBuffer[m_dwNumBytesToSend++] =0xaa;
+        m_outputBuffer[m_dwNumBytesToSend++] =0xbb;
+        SPI_TlastEnable();
+        m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB ;
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte, 0x0000 ==> 1 byte
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+        m_outputBuffer[m_dwNumBytesToSend++] =0xcc;
 
-    m_outputBuffer[m_dwNumBytesToSend++] =0xa1;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x80;
-    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+        SPI_CSDisable();
+        SPI_TlastDisable();
 
-    SPI_TlastEnable();
-    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte,
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
-    m_outputBuffer[m_dwNumBytesToSend++] =0x0c;
-    SPI_TlastDisable();
-    m_outputBuffer[m_dwNumBytesToSend++] = /*MPSSE_DO_WRITE |*/ MPSSE_WRITE_NEG | MPSSE_LSB | MPSSE_DO_READ;
-    m_outputBuffer[m_dwNumBytesToSend++] = 19; // length low byte,
-    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+        SPI_CSEnable();
+        m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x05; // length low byte,
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
 
-    SPI_CSDisable();
+/*        m_outputBuffer[m_dwNumBytesToSend++] =0xff;
+        m_outputBuffer[m_dwNumBytesToSend++] =0xff;
+        m_outputBuffer[m_dwNumBytesToSend++] =0xff;
+        m_outputBuffer[m_dwNumBytesToSend++] =0xff;*/
 
-    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
 
-    struct ftdi_transfer_control *tc_read;
-    tc_read = ftdi_read_data_submit(m_ftdi, m_inputBuffer, 20);
-    int transfer = ftdi_transfer_data_done(tc_read);
-    int stop = 0;
+        m_outputBuffer[m_dwNumBytesToSend++] =0xa1;
+        m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(addr/0x1000000);
+        m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x10000);
+        m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x100);
+        m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x1);
+        m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+
+        SPI_TlastEnable();
+        m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte,
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x10;
+        m_outputBuffer[m_dwNumBytesToSend++] = /*MPSSE_DO_WRITE |*/ MPSSE_WRITE_NEG | MPSSE_LSB | MPSSE_DO_READ;
+        m_outputBuffer[m_dwNumBytesToSend++] = 19; // length low byte,
+        m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+
+        SPI_TlastDisable();
+        SPI_CSDisable();
+
+        ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+
+        struct ftdi_transfer_control *tc_read;
+        tc_read = ftdi_read_data_submit(m_ftdi, m_inputBuffer, 20);
+        int transfer = ftdi_transfer_data_done(tc_read);
+        int stop = 0;
+    }
 
 }
 
@@ -235,6 +250,110 @@ void Dialog::SPI_TlastDisable() {
 
 void Dialog::SPI_Send(uint8_t data)
 {
+
+}
+
+bool Dialog::WishBoneReadMemory(uint32_t addr, uint32_t len, uint8_t* pData)
+{
+    if ((m_ftdi== 0) || (m_ftdi->usb_dev == 0))
+    {
+        return false;
+    }
+    uint32_t actualAddr = addr/4;
+    uint32_t actualLen = len + 8;
+
+    m_dwNumBytesToSend = 0;
+
+
+    SPI_TlastDisable();
+    SPI_CSEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x05; // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+
+    m_outputBuffer[m_dwNumBytesToSend++] =0xa1;
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(actualAddr/0x1000000);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(actualAddr/0x10000);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(actualAddr/0x100);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(actualAddr/0x1);
+
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(len/0x100);
+
+    SPI_TlastEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(len/0x1);
+    m_outputBuffer[m_dwNumBytesToSend++] = /*MPSSE_DO_WRITE |*/ MPSSE_WRITE_NEG | MPSSE_LSB | MPSSE_DO_READ;
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(actualLen/0x1); // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(actualLen/0x100); // length high byte
+    SPI_TlastDisable();
+    SPI_CSDisable();
+
+    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+
+    struct ftdi_transfer_control *tc_read;
+    tc_read = ftdi_read_data_submit(m_ftdi, m_inputBuffer, actualLen+1);
+    int transfer = ftdi_transfer_data_done(tc_read);
+    if (m_inputBuffer[0] != (uint8_t)len)
+    {
+        return false;
+    }
+    memcpy (pData,m_inputBuffer+1,len);
+    return true;
+
+}
+
+bool Dialog::WishBoneWriteMemory(uint32_t addr, uint32_t len, uint8_t *pData)
+{
+    if ((m_ftdi== 0) || (m_ftdi->usb_dev == 0))
+    {
+        return false;
+    }
+    uint32_t actualAddr = addr/4;
+    uint32_t lenOfFirstPart = 0x07 + len - 2;
+
+    m_dwNumBytesToSend = 0;
+
+
+    SPI_TlastDisable();
+    SPI_CSEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(lenOfFirstPart/0x1); // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(lenOfFirstPart/0x100); // length high byte
+
+    m_outputBuffer[m_dwNumBytesToSend++] =0xa2;
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(actualAddr/0x1000000);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(actualAddr/0x10000);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(actualAddr/0x100);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(actualAddr/0x1);
+
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(len/0x100);
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(len/0x1);
+
+    for (uint32_t i = 0; i<len-1;i++)
+    {
+        m_outputBuffer[m_dwNumBytesToSend++] = pData [i];
+    }
+
+    SPI_TlastEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x03; // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+    m_outputBuffer[m_dwNumBytesToSend++] = pData [len-1];
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    SPI_TlastDisable();
+    SPI_CSDisable();
+
+//    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+
+    struct ftdi_transfer_control *tc_write;
+    tc_write = ftdi_write_data_submit(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+    int transfer = ftdi_transfer_data_done(tc_write);
+
+    return true;
 
 }
 namespace Pin {
@@ -357,5 +476,96 @@ namespace Pin {
     ftdi_write_data(m_ftdi, OutputBuffer, dwNumBytesToSend);
     dwNumBytesToSend = 0;*/
     ui->pushButton->setIcon(QIcon(":/new/icons/Pictures/LedGreen.png"));
+
+}
+
+void Dialog::on_pushButton_2_clicked()
+{
+    // Now we know that correct address is 0x80000
+    m_dwNumBytesToSend = 0;
+
+    uint32_t addr = 0xf0003000/4;
+    SPI_TlastDisable();
+    SPI_CSEnable();
+
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x09; // length low byte, 0x0011 ==> 18dec byte
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+
+    m_outputBuffer[m_dwNumBytesToSend++] =0xa2;
+    m_outputBuffer[m_dwNumBytesToSend++] = (uint8_t)(addr/0x1000000);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x10000);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x100);
+    m_outputBuffer[m_dwNumBytesToSend++] =(uint8_t)(addr/0x1);
+    m_outputBuffer[m_dwNumBytesToSend++] =0x00;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x04;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x55;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x55;
+    m_outputBuffer[m_dwNumBytesToSend++] =0x55;
+    SPI_TlastEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length low byte, 0x0000 ==> 1 byte
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+    m_outputBuffer[m_dwNumBytesToSend++] =0x55;
+
+    SPI_CSDisable();
+    SPI_TlastDisable();
+
+    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+
+    int stop = 0;
+}
+
+void Dialog::on_m_btnMemoryRead_clicked()
+{
+    int addr = ui->m_editMemoryAddr->text().toULong(nullptr,0);
+    int len = ui->m_editMemoryCnt->text().toULong(nullptr,0);
+    m_memoryData.resize(len);
+    if (WishBoneReadMemory(addr,len,(uint8_t*) m_memoryData.constData()))
+    {
+        ui->m_btnMemoryRead->setIcon(QIcon(":/new/icons/Pictures/LedGreen.png"));
+    } else
+    {
+        ui->m_btnMemoryRead->setIcon(QIcon(":/new/icons/Pictures/LedRed.png"));
+    }
+    ui->m_memoryDump->setData(m_memoryData);
+}
+
+void Dialog::on_m_btnFlushSPI_clicked()
+{
+    if (m_ftdi== 0)
+    {
+        return;
+    }
+    m_dwNumBytesToSend = 0;
+    SPI_CSEnable();
+    SPI_TlastEnable();
+    m_outputBuffer[m_dwNumBytesToSend++] = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB /*| MPSSE_DO_READ*/;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x05; // length low byte,
+    m_outputBuffer[m_dwNumBytesToSend++] = 0x00; // length high byte
+
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    m_outputBuffer[m_dwNumBytesToSend++] = 0xff;
+    SPI_CSDisable();
+    SPI_TlastDisable();
+    ftdi_write_data(m_ftdi, m_outputBuffer, m_dwNumBytesToSend);
+
+}
+
+void Dialog::on_m_btmMemoryWrite_clicked()
+{
+    int addr = ui->m_editMemoryAddr->text().toULong(nullptr,0);
+    int len = ui->m_editMemoryCnt->text().toULong(nullptr,0);
+    if (WishBoneWriteMemory(addr,len,(uint8_t*) ui->m_memoryDump->data().constData()))
+    {
+        ui->m_btmMemoryWrite->setIcon(QIcon(":/new/icons/Pictures/LedGreen.png"));
+    } else
+    {
+        ui->m_btmMemoryWrite->setIcon(QIcon(":/new/icons/Pictures/LedRed.png"));
+    }
 
 }

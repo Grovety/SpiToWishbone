@@ -14,10 +14,16 @@ INCLUDEPATH += $$PWD/LibUSB/
 SOURCES += \
     libftdi/ftdi.c \
     main.cpp \
+    Dump/chunks.cpp \
+    Dump/commands.cpp \
+    Dump/qhexedit.cpp \
     dialog.cpp
 
 HEADERS += \
     dialog.h \
+    Dump/chunks.h \
+    Dump/commands.h \
+    Dump/qhexedit.h \
     libftdi/ftdi.h \
     libftdi/ftdi_i.h \
     libftdi/ftdi_version_i.h \
